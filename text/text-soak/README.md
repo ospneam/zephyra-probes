@@ -22,6 +22,22 @@ cargo run -- --phase-frames 300 --log-every 300 --duration-secs 86400
 - `--warmup-frames N`：前 N 帧不进 p95（默认 20）
 - `--duration-secs N`：跑满 N 秒自动退出（默认 0 = 一直跑）
 
+### 运行期断言（默认开启）
+
+指标一旦偏离预期，**立即 panic**（退出码 101，便于 CI 判定失败），不用等跑完再人工看日志：
+
+| 参数 | 默认 | 判据 |
+|---|---|---|
+| `--assert-warmup-secs N` | 10 | 预热结束后才建立基线并启用断言 |
+| `--assert-memory-pct N` | 10 | 工作集 / pagefile 相对预热基线增长不得超过 N% |
+| `--assert-evictions N` | 0 | 图集累计淘汰数上限（稳态应为 0） |
+| `--assert-p95-drift-pct N` | 50 | 同一 phase 的 p95 相对该 phase 基线漂移上限 % |
+| `--assert-quad-drift N` | 0 | 同一 phase 的 quad 数变化上限 |
+| `--no-assert` | — | 关闭全部断言（只打日志） |
+
+p95 与 quad 按 phase 分别比较：emoji 场景的 COLR 合成天然比文本场景慢一个
+数量级，混在一起比会误报。p95 每个 phase 至少 24 个样本才开始判定。
+
 ## 压力场景
 
 按 `frame / phase-frames % 4` 轮换：
@@ -52,10 +68,19 @@ cargo run -- --phase-frames 300 --log-every 300 --duration-secs 86400
 
 ## 验收标准
 
-- 预热后 24 小时内 `ws_kb` / `pf_kb` 增幅 < 10%
-- 稳态 `evictions` 保持 0，不持续增长
-- p95_us 不持续上升
-- 无崩溃、无错误日志、quad 数稳定
+以下每项都由运行期断言自动检查，违反立即 panic：
+
+- 预热后 `ws_kb` / `pf_kb` 增幅不超过 `--assert-memory-pct`（默认 10%）
+- 稳态 `evictions` 不超过 `--assert-evictions`（默认 0）
+- 同一 phase 的 p95 不比基线漂移超过 `--assert-p95-drift-pct`（默认 50%）
+- 同一 phase 的 quad 数变化不超过 `--assert-quad-drift`（默认 0）
+
+验证断言本身会触发（把阈值压到不合理的极小值）：
+
+```powershell
+cargo run -- --assert-warmup-secs 3 --assert-memory-pct 0.01 --duration-secs 12
+# thread 'main' panicked: [soak] 断言失败：工作集 ... 增长 1.7% > 0.0%
+```
 
 ## 本机基线（debug，90 秒 / 5700 帧）
 

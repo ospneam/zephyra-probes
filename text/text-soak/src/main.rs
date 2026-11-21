@@ -218,7 +218,7 @@ fn memory_kb() -> (u64, u64) {
     (0, 0)
 }
 
-fn percentile(samples: &mut VecDeque<u128>, p: usize) -> u128 {
+fn percentile(samples: &VecDeque<u128>, p: usize) -> u128 {
     if samples.is_empty() {
         return 0;
     }
@@ -235,6 +235,138 @@ fn arg_usize(name: &str, default: usize) -> usize {
         .unwrap_or(default)
 }
 
+fn arg_f64(name: &str, default: f64) -> f64 {
+    let args: Vec<String> = std::env::args().collect();
+    args.windows(2)
+        .find(|w| w[0] == name)
+        .and_then(|w| w[1].parse().ok())
+        .unwrap_or(default)
+}
+
+fn arg_flag(name: &str) -> bool {
+    std::env::args().any(|a| a == name)
+}
+
+/// p95 断言至少需要这么多 per-phase 样本才有统计意义。
+const MIN_P95_SAMPLES: usize = 24;
+
+/// soak 运行期断言：任意一项不达标立即 panic（非零退出码，便于 CI 判定）。
+///
+/// 基线在预热期结束后建立，之后每个日志点都做增量检查：
+/// - 工作集 / pagefile 相对预热基线增长不超过 `memory_pct`%
+/// - 图集淘汰数不超过 `evictions_max`（稳态应为 0）
+/// - 同一 phase 的 p95 不比该 phase 基线漂移超过 `p95_drift_pct`%
+/// - 同一 phase 的 quad 数变化不超过 `quad_drift`
+///
+/// p95 / quad 按 phase 分别比较：emoji 场景的 COLR 合成天然比文本场景慢一个
+/// 数量级，混在一起比会产生大量误报。
+struct AssertState {
+    enabled: bool,
+    memory_pct: f64,
+    evictions_max: u64,
+    p95_drift_pct: f64,
+    quad_drift: usize,
+    warmup_secs: f64,
+    baseline_ws: Option<u64>,
+    baseline_pf: Option<u64>,
+    phase_p95: [Option<u128>; 4],
+    phase_quads: [Option<usize>; 4],
+}
+
+impl AssertState {
+    fn from_args() -> Self {
+        Self {
+            enabled: !arg_flag("--no-assert"),
+            memory_pct: arg_f64("--assert-memory-pct", 10.0),
+            evictions_max: arg_usize("--assert-evictions", 0) as u64,
+            p95_drift_pct: arg_f64("--assert-p95-drift-pct", 50.0),
+            quad_drift: arg_usize("--assert-quad-drift", 0),
+            warmup_secs: arg_f64("--assert-warmup-secs", 10.0),
+            baseline_ws: None,
+            baseline_pf: None,
+            phase_p95: [None; 4],
+            phase_quads: [None; 4],
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn check(
+        &mut self,
+        elapsed_secs: f64,
+        phase: usize,
+        ws: u64,
+        pf: u64,
+        evictions: u64,
+        phase_p95: u128,
+        p95_samples: usize,
+        quads: usize,
+    ) {
+        if !self.enabled || elapsed_secs < self.warmup_secs {
+            return;
+        }
+
+        // 内存：预热后首个采样作基线。非 Windows 上 ws/pf 恒为 0，跳过。
+        if ws > 0 && pf > 0 {
+            match (self.baseline_ws, self.baseline_pf) {
+                (None, _) => {
+                    self.baseline_ws = Some(ws);
+                    self.baseline_pf = Some(pf);
+                }
+                (Some(bw), Some(bp)) => {
+                    let ws_growth = (ws as f64 / bw as f64 - 1.0) * 100.0;
+                    let pf_growth = (pf as f64 / bp as f64 - 1.0) * 100.0;
+                    assert!(
+                        ws_growth <= self.memory_pct,
+                        "[soak] 断言失败：工作集 {ws} KB 相对预热基线 {bw} KB 增长 {ws_growth:.1}% > {:.1}%",
+                        self.memory_pct
+                    );
+                    assert!(
+                        pf_growth <= self.memory_pct,
+                        "[soak] 断言失败：pagefile {pf} KB 相对预热基线 {bp} KB 增长 {pf_growth:.1}% > {:.1}%",
+                        self.memory_pct
+                    );
+                }
+                _ => {}
+            }
+        }
+
+        assert!(
+            evictions <= self.evictions_max,
+            "[soak] 断言失败：图集累计淘汰 {evictions} > 上限 {}",
+            self.evictions_max
+        );
+
+        // quad 数：同一 phase 内容固定，不应变化。
+        match self.phase_quads[phase] {
+            None => self.phase_quads[phase] = Some(quads),
+            Some(base) => {
+                let drift = quads.abs_diff(base);
+                assert!(
+                    drift <= self.quad_drift,
+                    "[soak] 断言失败：phase {phase} 的 quad 数从 {base} 变为 {quads}（漂移 {drift} > {}）",
+                    self.quad_drift
+                );
+            }
+        }
+
+        // p95：同 phase 比较，样本不足时只记基线、不判定。
+        if p95_samples >= MIN_P95_SAMPLES {
+            match self.phase_p95[phase] {
+                None => self.phase_p95[phase] = Some(phase_p95),
+                Some(base) if base > 0 => {
+                    let drift = (phase_p95 as f64 / base as f64 - 1.0) * 100.0;
+                    assert!(
+                        drift <= self.p95_drift_pct,
+                        "[soak] 断言失败：phase {phase} 的 p95 从 {base}µs 漂移至 {phase_p95}µs（+{drift:.1}% > {:.1}%）",
+                        self.p95_drift_pct
+                    );
+                }
+                Some(_) => {}
+            }
+        }
+    }
+}
+
 fn main() {
     let phase_frames = arg_usize("--phase-frames", 300).max(1) as u64;
     let log_every = arg_usize("--log-every", 300).max(1) as u64;
@@ -242,6 +374,7 @@ fn main() {
     let duration_secs = arg_usize("--duration-secs", 0) as f64;
     let warmup = arg_usize("--warmup-frames", 20) as u64;
     let interval = Duration::from_secs_f64(1.0 / fps);
+    let mut asserts = AssertState::from_args();
 
     let frame_counter = Arc::new(AtomicU64::new(0));
     let view = SoakView {
@@ -254,6 +387,9 @@ fn main() {
     let mut last_log = started;
     let mut last_log_frame = 0u64;
     let mut samples: VecDeque<u128> = VecDeque::with_capacity(512);
+    // 每个 phase 独立样本：emoji 场景天然慢一个数量级，混算会让 p95 无法比较。
+    let mut phase_samples: [VecDeque<u128>; 4] =
+        std::array::from_fn(|_| VecDeque::with_capacity(256));
     let mut frame: u64 = 0;
 
     eprintln!(
@@ -269,10 +405,16 @@ fn main() {
         let frame_us = times.total_us as u128;
 
         // 预热帧（首帧栅格化全部字形、ATL 瞬间填充）不进 p95，否则会永久污染分位数。
+        let phase = ((frame / phase_frames) % 4) as usize;
         if f.redrawn && frame > warmup {
             samples.push_back(frame_us);
             if samples.len() > 512 {
                 samples.pop_front();
+            }
+            let ps = &mut phase_samples[phase];
+            ps.push_back(frame_us);
+            if ps.len() > 256 {
+                ps.pop_front();
             }
         }
 
@@ -287,7 +429,8 @@ fn main() {
             };
             let (ws, pf) = memory_kb();
             let stats = host.atlas_stats();
-            let p95 = percentile(&mut samples, 95);
+            let p95 = percentile(&samples, 95);
+            let phase_p95 = percentile(&phase_samples[phase], 95);
             eprintln!(
                 "[soak] t={:.1}s frame={} fps={:.1} frame_us={} paint_us={} expand_us={} p95_us={} quads={} glyphs={} evictions={} atlas_used_px={} ws_kb={} pf_kb={}",
                 elapsed.as_secs_f64(),
@@ -303,6 +446,16 @@ fn main() {
                 stats.used_px,
                 ws,
                 pf
+            );
+            asserts.check(
+                elapsed.as_secs_f64(),
+                phase,
+                ws,
+                pf,
+                stats.evictions,
+                phase_p95,
+                phase_samples[phase].len(),
+                f.render.quads,
             );
             last_log = Instant::now();
             last_log_frame = frame;

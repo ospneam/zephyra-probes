@@ -317,7 +317,7 @@ dependencies = [
 [[package]]
 name = "zephyra-core"
 version = "0.1.0"
-source = "git+https://github.com/Aura-Zephyrus/ZephyraCore.git?branch=main#606dd92c6d21d0976de3945246c1653848be6d90"
+source = "git+https://github.com/Aura-Zephyrus/ZephyraCore.git?branch=main#dfa9ddcc2d0eb1450bf2719f90f6818ec45dbe76"
 dependencies = [
  "zephyra-vector",
 ]
@@ -325,7 +325,7 @@ dependencies = [
 [[package]]
 name = "zephyra-fx"
 version = "0.1.0"
-source = "git+https://github.com/Aura-Zephyrus/ZephyraCore.git?branch=main#606dd92c6d21d0976de3945246c1653848be6d90"
+source = "git+https://github.com/Aura-Zephyrus/ZephyraCore.git?branch=main#dfa9ddcc2d0eb1450bf2719f90f6818ec45dbe76"
 dependencies = [
  "zephyra-core",
  "zephyra-vector",
