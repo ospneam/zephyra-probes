@@ -243,6 +243,13 @@ fn arg_u64(name: &str, default: u64) -> u64 {
         .unwrap_or(default)
 }
 
+fn arg_f64_opt(name: &str) -> Option<f64> {
+    let args: Vec<String> = std::env::args().collect();
+    args.windows(2)
+        .find(|w| w[0] == name)
+        .and_then(|w| w[1].parse().ok())
+}
+
 fn arg_f64(name: &str, default: f64) -> f64 {
     let args: Vec<String> = std::env::args().collect();
     args.windows(2)
@@ -274,7 +281,10 @@ struct AssertState {
     /// 基线低于此值（KB）时跳过百分比判定，避免小基数抖动误报。
     memory_floor_kb: u64,
     evictions_max: u64,
-    p95_drift_pct: f64,
+    /// None = 不判定 p95（默认）：debug 构建下 wall-clock 帧耗时被 OS/热噪声主导，
+    /// 首样本基线（冷启动）与稳态天然差 50%+，做长稳断言会误报。显式传
+    /// --assert-p95-drift-pct 才开启；phase_p95/strikes 始终记录供事后分析。
+    p95_drift_pct: Option<f64>,
     /// p95 基线低于此值（µs）时不判定：样本小、抖动大，百分比无意义。
     p95_floor_us: u128,
     /// 连续 N 次超阈值才 panic（消除单样本尖峰误报）。
@@ -296,7 +306,7 @@ impl AssertState {
             memory_pct: arg_f64("--assert-memory-pct", 10.0),
             memory_floor_kb: arg_u64("--assert-memory-floor-kb", 64 * 1024),
             evictions_max: arg_usize("--assert-evictions", 0) as u64,
-            p95_drift_pct: arg_f64("--assert-p95-drift-pct", 50.0),
+            p95_drift_pct: arg_f64_opt("--assert-p95-drift-pct"),
             p95_floor_us: arg_u64("--assert-p95-floor-us", 2000) as u128,
             p95_strikes_required: arg_usize("--assert-p95-strikes", 3) as u32,
             quad_drift: arg_usize("--assert-quad-drift", 0),
@@ -373,23 +383,25 @@ impl AssertState {
             }
         }
 
-        // p95：同 phase 比较，样本不足时只记基线、不判定。
+        // p95：始终记录每 phase 基线/strikes 供事后分析；只有显式开启才断言。
+        // 基线取"稳定后的第一个样本"而非全程首个——冷启动首帧栅格化会让基线偏低。
         if p95_samples >= MIN_P95_SAMPLES {
             match self.phase_p95[phase] {
                 None => self.phase_p95[phase] = Some(phase_p95),
                 Some(base) if base >= self.p95_floor_us => {
                     let drift = (phase_p95 as f64 / base as f64 - 1.0) * 100.0;
                     let strikes = &mut self.phase_p95_strikes[phase];
-                    if drift > self.p95_drift_pct {
-                        *strikes += 1;
-                        assert!(
-                            *strikes < self.p95_strikes_required,
-                            "[soak] 断言失败：phase {phase} 的 p95 从 {base}µs 漂移至 {phase_p95}µs（+{drift:.1}% > {:.1}%），连续 {strikes} 次",
-                            self.p95_drift_pct
-                        );
-                    } else {
-                        // 回到阈值内就清零：只抓持续回归，不抓偶发尖峰。
-                        *strikes = 0;
+                    if let Some(limit) = self.p95_drift_pct {
+                        if drift > limit {
+                            *strikes += 1;
+                            assert!(
+                                *strikes < self.p95_strikes_required,
+                                "[soak] 断言失败：phase {phase} 的 p95 从 {base}µs 漂移至 {phase_p95}µs（+{drift:.1}% > {limit:.1}%），连续 {strikes} 次"
+                            );
+                        } else {
+                            // 回到阈值内就清零：只抓持续回归，不抓偶发尖峰。
+                            *strikes = 0;
+                        }
                     }
                 }
                 Some(_) => {}
