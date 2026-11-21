@@ -2018,7 +2018,7 @@ dependencies = [
 [[package]]
 name = "zephyra-vector"
 version = "0.1.0"
-source = "git+https://github.com/Aura-Zephyrus/zephyra-vector.git?branch=main#b57afc631ba0498a116ff6e93bad3ef5aeeedbee"
+source = "git+https://github.com/Aura-Zephyrus/zephyra-vector.git?branch=main#2e4a9cdb4cd94ac5e1a0e3eb0e9182a87511529b"
 dependencies = [
  "ab_glyph",
  "bytemuck",
