@@ -32,6 +32,14 @@ cargo run
 `.cargo/config.toml`（被根 `.gitignore` 忽略）把 git 依赖覆盖成相邻仓库的
 path：`E:/zephyra-vector` 与 `E:/ZephyraUI/...`。改这些路径即可指向你自己的检出目录。
 
+## 回归检查
+
+- 自动化（CPU 像素）：`cargo test -p text-lab`。`pixel_regression::emoji_row_has_real_color` 用
+  `CpuHost` 渲染同一份视图，断言 emoji 行出现真实彩色像素——防止 COLR 层退化成黑白。
+- GPU 像素（人工/MCP）：用上面的命令启动窗口，设 `ZEPHYRA_DEBUG_PORT=7878`，再用 Zephyra MCP
+  的 `screenshot` / `get_layout` 抓帧。判据：emoji 行有彩色像素，其他文本行为灰度；
+  `get_layout` 的 11 行文本与预期一致。这一步不进 CI（需要窗口与调试桥），只作为 GPU 侧兜底。
+
 ## 字体
 
 `fonts/MiSans-Regular.ttf` 随应用自带，运行时落地到临时目录并通过

@@ -27,7 +27,7 @@ mod lab {
 
     const DEMO_FONT: &[u8] = include_bytes!("../fonts/MiSans-Regular.ttf");
 
-    fn use_demo_font() {
+    pub(super) fn use_demo_font() {
         let mut h: u64 = 0xcbf2_9ce4_8422_2325;
         for b in DEMO_FONT {
             h ^= *b as u64;
@@ -46,7 +46,7 @@ mod lab {
         );
     }
 
-    struct TextLab;
+    pub(super) struct TextLab;
 
     impl View for TextLab {
         fn on_input(&mut self, _state: &zephyra_fx::InputState) {}
@@ -216,4 +216,35 @@ fn main() {
 
     #[cfg(not(all(windows, feature = "d3d12")))]
     eprintln!("[text_lab] 需要 Windows + d3d12 特性（cargo run --features d3d12）");
+}
+
+#[cfg(all(test, windows, feature = "d3d12"))]
+mod pixel_regression {
+    use super::lab::{use_demo_font, TextLab};
+    use zephyra_core::core::Color;
+    use zephyra_fx::cpu_only::CpuHost;
+
+    #[test]
+    fn emoji_row_has_real_color() {
+        use_demo_font();
+        let mut host = CpuHost::new(TextLab, (1100, 760));
+        host.frame();
+        let canvas = host.render_cpu(Color::rgb(0.06, 0.07, 0.09));
+        let mut colored = 0usize;
+        for y in 397..429 {
+            for x in 0..700 {
+                let i = (y * 1100 + x) * 4;
+                let r = canvas.pixels[i];
+                let g = canvas.pixels[i + 1];
+                let b = canvas.pixels[i + 2];
+                if r.max(g).max(b).saturating_sub(r.min(g).min(b)) > 30 {
+                    colored += 1;
+                }
+            }
+        }
+        assert!(
+            colored > 40,
+            "COLR emoji 应产出彩色像素，实得 {colored}；若退化成黑白说明颜色层没接上"
+        );
+    }
 }
