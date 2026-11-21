@@ -1,0 +1,15 @@
+[package]
+name = "video-soak"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+# media 桥接：帧/时钟词汇始终可用；codec 用 features 打开（用户放什么 MP4 由 --path 决定）。
+zephyra-media = { git = "https://github.com/Aura-Zephyrus/ZephyraCore.git", branch = "main", package = "zephyra-media", features = ["video-h264", "aac", "audio"] }
+# 帧几何断言要用 VideoFrame 的 coded_size / planes / plane_rows。
+zephyra-video = { git = "https://github.com/Aura-Zephyrus/zephyra-video.git" }
+# import_video_frame 产出 FrameDesc；格式断言用 ExternalTextureFormat。
+zephyra-render-ext = { git = "https://github.com/Aura-Zephyrus/ZephyraCore.git", branch = "main", package = "zephyra-render-ext" }
+# 仅长稳监控：进程工作集 / pagefile 占用。
+windows = { version = "0.62.2", features = ["Win32_Foundation", "Win32_System_ProcessStatus", "Win32_System_Threading"] }
