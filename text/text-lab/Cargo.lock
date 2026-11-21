@@ -1945,6 +1945,7 @@ checksum = "b9cc00251562a284751c9973bace760d86c0276c471b4be569fe6b068ee97a56"
 [[package]]
 name = "zephyra-app-config"
 version = "0.1.0"
+source = "git+https://github.com/Aura-Zephyrus/ZephyraUI.git?branch=main#bde97d8c9b0c3c92b4ae1cf050ac668974238b30"
 dependencies = [
  "serde",
  "serde_json",
@@ -1953,6 +1954,7 @@ dependencies = [
 [[package]]
 name = "zephyra-core"
 version = "0.1.0"
+source = "git+https://github.com/Aura-Zephyrus/ZephyraUI.git?branch=main#bde97d8c9b0c3c92b4ae1cf050ac668974238b30"
 dependencies = [
  "zephyra-vector",
 ]
@@ -1960,6 +1962,7 @@ dependencies = [
 [[package]]
 name = "zephyra-dcomp"
 version = "0.1.0"
+source = "git+https://github.com/Aura-Zephyrus/ZephyraUI.git?branch=main#bde97d8c9b0c3c92b4ae1cf050ac668974238b30"
 dependencies = [
  "log",
  "windows",
@@ -1969,6 +1972,7 @@ dependencies = [
 [[package]]
 name = "zephyra-ext"
 version = "0.1.0"
+source = "git+https://github.com/Aura-Zephyrus/ZephyraUI.git?branch=main#bde97d8c9b0c3c92b4ae1cf050ac668974238b30"
 dependencies = [
  "zephyra-render-ext",
 ]
@@ -1976,6 +1980,7 @@ dependencies = [
 [[package]]
 name = "zephyra-fx"
 version = "0.1.0"
+source = "git+https://github.com/Aura-Zephyrus/ZephyraUI.git?branch=main#bde97d8c9b0c3c92b4ae1cf050ac668974238b30"
 dependencies = [
  "zephyra-core",
  "zephyra-vector",
@@ -1984,10 +1989,12 @@ dependencies = [
 [[package]]
 name = "zephyra-platform"
 version = "0.1.0"
+source = "git+https://github.com/Aura-Zephyrus/ZephyraUI.git?branch=main#bde97d8c9b0c3c92b4ae1cf050ac668974238b30"
 
 [[package]]
 name = "zephyra-platform-win"
 version = "0.1.0"
+source = "git+https://github.com/Aura-Zephyrus/ZephyraUI.git?branch=main#bde97d8c9b0c3c92b4ae1cf050ac668974238b30"
 dependencies = [
  "windows",
  "zephyra-platform",
@@ -1996,10 +2003,12 @@ dependencies = [
 [[package]]
 name = "zephyra-render-ext"
 version = "0.1.0"
+source = "git+https://github.com/Aura-Zephyrus/ZephyraUI.git?branch=main#bde97d8c9b0c3c92b4ae1cf050ac668974238b30"
 
 [[package]]
 name = "zephyra-uia"
 version = "0.1.0"
+source = "git+https://github.com/Aura-Zephyrus/ZephyraUI.git?branch=main#bde97d8c9b0c3c92b4ae1cf050ac668974238b30"
 dependencies = [
  "windows",
  "windows-core",
@@ -2009,6 +2018,7 @@ dependencies = [
 [[package]]
 name = "zephyra-vector"
 version = "0.1.0"
+source = "git+https://github.com/Aura-Zephyrus/zephyra-vector.git?branch=main#1a7c2d8e8b57b4053409c919e8d1a314fda25e35"
 dependencies = [
  "ab_glyph",
  "bytemuck",
@@ -2022,6 +2032,7 @@ dependencies = [
 [[package]]
 name = "zephyra-window"
 version = "0.1.0"
+source = "git+https://github.com/Aura-Zephyrus/ZephyraUI.git?branch=main#bde97d8c9b0c3c92b4ae1cf050ac668974238b30"
 dependencies = [
  "winit",
  "zephyra-app-config",
@@ -2032,6 +2043,7 @@ dependencies = [
 [[package]]
 name = "zephyra-winit-d3d12"
 version = "0.1.0"
+source = "git+https://github.com/Aura-Zephyrus/ZephyraUI.git?branch=main#bde97d8c9b0c3c92b4ae1cf050ac668974238b30"
 dependencies = [
  "bytemuck",
  "raw-window-handle",
@@ -2053,6 +2065,7 @@ dependencies = [
 [[package]]
 name = "zephyra-winit-input"
 version = "0.1.0"
+source = "git+https://github.com/Aura-Zephyrus/ZephyraUI.git?branch=main#bde97d8c9b0c3c92b4ae1cf050ac668974238b30"
 dependencies = [
  "winit",
  "zephyra-core",
