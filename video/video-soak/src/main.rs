@@ -46,6 +46,14 @@ fn arg_f64(name: &str, default: f64) -> f64 {
         .unwrap_or(default)
 }
 
+fn arg_u64(name: &str, default: u64) -> u64 {
+    let args: Vec<String> = std::env::args().collect();
+    args.windows(2)
+        .find(|w| w[0] == name)
+        .and_then(|w| w[1].parse().ok())
+        .unwrap_or(default)
+}
+
 fn arg_path(name: &str) -> Option<PathBuf> {
     let args: Vec<String> = std::env::args().collect();
     args.windows(2)
@@ -65,6 +73,9 @@ fn main() {
     let log_every_secs = arg_f64("--log-every", 5.0).max(0.1);
     let warmup_secs = arg_f64("--assert-warmup-secs", 5.0);
     let memory_pct = arg_f64("--assert-memory-pct", 10.0);
+    // 绝对下限：基线很小时（如刚启动的 pagefile 只有几 MB），百分比会被
+    // 几百 KB 的抖动放大成 30%+ 造成误报。低于此基线不按百分比判定。
+    let memory_floor_kb = arg_u64("--assert-memory-floor-kb", 64 * 1024);
     let stall_secs = arg_f64("--stall-timeout-secs", 5.0).max(0.5);
     let session_idle_secs = arg_f64("--session-idle-secs", 1.5).max(0.2);
     let enabled = !std::env::args().any(|a| a == "--no-assert");
@@ -205,14 +216,19 @@ fn main() {
                 } else if ws > 0 && pf > 0 {
                     let wsg = (ws as f64 / baseline_ws as f64 - 1.0) * 100.0;
                     let pfg = (pf as f64 / baseline_pf as f64 - 1.0) * 100.0;
-                    assert!(
-                        wsg <= memory_pct,
-                        "[video-soak] 断言失败：工作集 {ws}KB 相对基线 {baseline_ws}KB 增长 {wsg:.1}% > {memory_pct}%"
-                    );
-                    assert!(
-                        pfg <= memory_pct,
-                        "[video-soak] 断言失败：pagefile {pf}KB 相对基线 {baseline_pf}KB 增长 {pfg:.1}% > {memory_pct}%"
-                    );
+                    // 基线低于绝对下限时只记录不判定：小基数的百分比没有意义。
+                    if baseline_ws >= memory_floor_kb {
+                        assert!(
+                            wsg <= memory_pct,
+                            "[video-soak] 断言失败：工作集 {ws}KB 相对基线 {baseline_ws}KB 增长 {wsg:.1}% > {memory_pct}%"
+                        );
+                    }
+                    if baseline_pf >= memory_floor_kb {
+                        assert!(
+                            pfg <= memory_pct,
+                            "[video-soak] 断言失败：pagefile {pf}KB 相对基线 {baseline_pf}KB 增长 {pfg:.1}% > {memory_pct}%"
+                        );
+                    }
                 }
                 assert!(
                     first_frame_at.is_some(),

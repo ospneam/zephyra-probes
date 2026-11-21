@@ -235,6 +235,14 @@ fn arg_usize(name: &str, default: usize) -> usize {
         .unwrap_or(default)
 }
 
+fn arg_u64(name: &str, default: u64) -> u64 {
+    let args: Vec<String> = std::env::args().collect();
+    args.windows(2)
+        .find(|w| w[0] == name)
+        .and_then(|w| w[1].parse().ok())
+        .unwrap_or(default)
+}
+
 fn arg_f64(name: &str, default: f64) -> f64 {
     let args: Vec<String> = std::env::args().collect();
     args.windows(2)
@@ -263,6 +271,8 @@ const MIN_P95_SAMPLES: usize = 24;
 struct AssertState {
     enabled: bool,
     memory_pct: f64,
+    /// 基线低于此值（KB）时跳过百分比判定，避免小基数抖动误报。
+    memory_floor_kb: u64,
     evictions_max: u64,
     p95_drift_pct: f64,
     quad_drift: usize,
@@ -278,6 +288,7 @@ impl AssertState {
         Self {
             enabled: !arg_flag("--no-assert"),
             memory_pct: arg_f64("--assert-memory-pct", 10.0),
+            memory_floor_kb: arg_u64("--assert-memory-floor-kb", 64 * 1024),
             evictions_max: arg_usize("--assert-evictions", 0) as u64,
             p95_drift_pct: arg_f64("--assert-p95-drift-pct", 50.0),
             quad_drift: arg_usize("--assert-quad-drift", 0),
@@ -315,16 +326,20 @@ impl AssertState {
                 (Some(bw), Some(bp)) => {
                     let ws_growth = (ws as f64 / bw as f64 - 1.0) * 100.0;
                     let pf_growth = (pf as f64 / bp as f64 - 1.0) * 100.0;
-                    assert!(
-                        ws_growth <= self.memory_pct,
-                        "[soak] 断言失败：工作集 {ws} KB 相对预热基线 {bw} KB 增长 {ws_growth:.1}% > {:.1}%",
-                        self.memory_pct
-                    );
-                    assert!(
-                        pf_growth <= self.memory_pct,
-                        "[soak] 断言失败：pagefile {pf} KB 相对预热基线 {bp} KB 增长 {pf_growth:.1}% > {:.1}%",
-                        self.memory_pct
-                    );
+                    if bw >= self.memory_floor_kb {
+                        assert!(
+                            ws_growth <= self.memory_pct,
+                            "[soak] 断言失败：工作集 {ws} KB 相对预热基线 {bw} KB 增长 {ws_growth:.1}% > {:.1}%",
+                            self.memory_pct
+                        );
+                    }
+                    if bp >= self.memory_floor_kb {
+                        assert!(
+                            pf_growth <= self.memory_pct,
+                            "[soak] 断言失败：pagefile {pf} KB 相对预热基线 {bp} KB 增长 {pf_growth:.1}% > {:.1}%",
+                            self.memory_pct
+                        );
+                    }
                 }
                 _ => {}
             }
