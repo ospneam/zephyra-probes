@@ -1,0 +1,8 @@
+[package]
+name = "video-perf"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+zephyra-media = { git = "https://github.com/Aura-Zephyrus/ZephyraCore.git", branch = "main", package = "zephyra-media", features = ["video-h264", "aac", "audio"] }

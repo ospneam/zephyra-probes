@@ -1,0 +1,9 @@
+[package]
+name = "text-perf"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+zephyra-core = { git = "https://github.com/Aura-Zephyrus/ZephyraCore.git", branch = "main", package = "zephyra-core" }
+zephyra-fx = { git = "https://github.com/Aura-Zephyrus/ZephyraCore.git", branch = "main", package = "zephyra-fx" }
