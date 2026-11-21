@@ -1,0 +1,11 @@
+[package]
+name = "text-soak"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+zephyra-core = { git = "https://github.com/Aura-Zephyrus/ZephyraCore.git", branch = "main", package = "zephyra-core" }
+zephyra-fx = { git = "https://github.com/Aura-Zephyrus/ZephyraCore.git", branch = "main", package = "zephyra-fx" }
+# 仅用于长稳监控：进程工作集 / pagefile 占用。
+windows = { version = "0.62.2", features = ["Win32_Foundation", "Win32_System_ProcessStatus", "Win32_System_Threading"] }
