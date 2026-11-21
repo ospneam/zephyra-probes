@@ -198,7 +198,8 @@ mod lab {
     }
 
     pub fn run() {
-        use_demo_font();
+        // 默认用系统字体（FontSet 会按候选表挑 CJK / emoji 字体）。
+        // 内嵌 MiSans 只在显式传 --demo-font 时由 main() 注入。
         let event_loop = winit::event_loop::EventLoop::new().expect("EventLoop::new");
         let mut bootstrap = Bootstrap {
             inner: None,
@@ -212,7 +213,13 @@ mod lab {
 
 fn main() {
     #[cfg(all(windows, feature = "d3d12"))]
-    lab::run();
+    {
+        // 仅在显式要求时才用随应用内嵌的 MiSans；默认走系统字体栈。
+        if std::env::args().any(|a| a == "--demo-font") {
+            lab::use_demo_font();
+        }
+        lab::run();
+    }
 
     #[cfg(not(all(windows, feature = "d3d12")))]
     eprintln!("[text_lab] 需要 Windows + d3d12 特性（cargo run --features d3d12）");
@@ -220,13 +227,13 @@ fn main() {
 
 #[cfg(all(test, windows, feature = "d3d12"))]
 mod pixel_regression {
-    use super::lab::{use_demo_font, TextLab};
+    use super::lab::TextLab;
     use zephyra_core::core::Color;
     use zephyra_fx::cpu_only::CpuHost;
 
     #[test]
     fn emoji_row_has_real_color() {
-        use_demo_font();
+        // 系统字体栈自带 Segoe UI Emoji，彩色 emoji 断言不依赖内嵌演示字体。
         let mut host = CpuHost::new(TextLab, (1100, 760));
         host.frame();
         let canvas = host.render_cpu(Color::rgb(0.06, 0.07, 0.09));

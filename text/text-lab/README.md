@@ -24,7 +24,9 @@ $env:ZEPHYRA_DEBUG_PORT = 7878
 cargo run
 ```
 
-默认使用 D3D12 后端（Windows）。`ZEPHYRA_DEBUG_PORT` 可选，设了之后可用 Zephyra MCP 截图/查布局。
+默认使用 D3D12 后端（Windows），**字体默认走系统字体栈**（FontSet 会按候选表挑 CJK 与 emoji 字体，覆盖 MiSans / Segoe UI Emoji）。`ZEPHYRA_DEBUG_PORT` 可选，设了之后可用 Zephyra MCP 截图/查布局。
+
+若要强制用随应用内嵌的 MiSans（观感固定，脱离系统字体差异），加 `--demo-font` 参数：`cargo run -- --demo-font`。
 
 ## 本地联调
 
