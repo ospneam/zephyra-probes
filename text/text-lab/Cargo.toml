@@ -1,0 +1,15 @@
+[package]
+name = "text-lab"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[features]
+default = ["d3d12"]
+d3d12 = ["dep:zephyra-winit-d3d12"]
+
+[dependencies]
+zephyra-core = { git = "https://github.com/Aura-Zephyrus/ZephyraUI.git", branch = "main", package = "zephyra-core" }
+zephyra-fx = { git = "https://github.com/Aura-Zephyrus/ZephyraUI.git", branch = "main", package = "zephyra-fx" }
+zephyra-winit-d3d12 = { git = "https://github.com/Aura-Zephyrus/ZephyraUI.git", branch = "main", package = "zephyra-winit-d3d12", optional = true }
+winit = "0.30"
