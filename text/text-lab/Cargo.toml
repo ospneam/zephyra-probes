@@ -9,7 +9,8 @@ default = ["d3d12"]
 d3d12 = ["dep:zephyra-winit-d3d12"]
 
 [dependencies]
-zephyra-core = { git = "https://github.com/Aura-Zephyrus/ZephyraUI.git", branch = "main", package = "zephyra-core" }
-zephyra-fx = { git = "https://github.com/Aura-Zephyrus/ZephyraUI.git", branch = "main", package = "zephyra-fx" }
-zephyra-winit-d3d12 = { git = "https://github.com/Aura-Zephyrus/ZephyraUI.git", branch = "main", package = "zephyra-winit-d3d12", optional = true }
+# 框架 crate 已统一迁到 ZephyraCore 仓；与上游 workspace 保持一致。
+zephyra-core = { git = "https://github.com/Aura-Zephyrus/ZephyraCore.git", branch = "main", package = "zephyra-core" }
+zephyra-fx = { git = "https://github.com/Aura-Zephyrus/ZephyraCore.git", branch = "main", package = "zephyra-fx" }
+zephyra-winit-d3d12 = { git = "https://github.com/Aura-Zephyrus/ZephyraCore.git", branch = "main", package = "zephyra-winit-d3d12", optional = true }
 winit = "0.30"
