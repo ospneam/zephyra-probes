@@ -79,14 +79,16 @@ fn main() {
     let stall_secs = arg_f64("--stall-timeout-secs", 5.0).max(0.5);
     let session_idle_secs = arg_f64("--session-idle-secs", 1.5).max(0.2);
     let enabled = !std::env::args().any(|a| a == "--no-assert");
+    let use_audio = !std::env::args().any(|a| a == "--no-audio");
 
     eprintln!(
-        "[video-soak] 启动：path={} duration={:.0}s log_every={:.1}s assert={} warmup={:.1}s",
+        "[video-soak] 启动：path={} duration={:.0}s log_every={:.1}s assert={} warmup={:.1}s audio={}",
         path.display(),
         duration_secs,
         log_every_secs,
         enabled,
-        warmup_secs
+        warmup_secs,
+        use_audio
     );
 
     let started = Instant::now();
@@ -101,7 +103,11 @@ fn main() {
     let mut first_frame_at: Option<Instant> = None;
 
     while started.elapsed().as_secs_f64() < duration_secs {
-        let mut player = MediaPlayer::open(&path, PlayerOptions::default()).unwrap_or_else(|e| {
+        let opts = PlayerOptions {
+            audio: use_audio,
+            ..PlayerOptions::default()
+        };
+        let mut player = MediaPlayer::open(&path, opts).unwrap_or_else(|e| {
             panic!("[video-soak] 断言失败：第 {sessions} 次 open 失败：{e}")
         });
         sessions += 1;

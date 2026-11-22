@@ -1311,7 +1311,7 @@ dependencies = [
 [[package]]
 name = "zephyra-media"
 version = "0.1.0"
-source = "git+https://github.com/Aura-Zephyrus/ZephyraCore.git?branch=main#dfa9ddcc2d0eb1450bf2719f90f6818ec45dbe76"
+source = "git+https://github.com/Aura-Zephyrus/ZephyraCore.git?branch=main#fff064bb4e4bb4bffed7db8ec9000c943f790ec8"
 dependencies = [
  "bytes",
  "cpal",
@@ -1323,7 +1323,7 @@ dependencies = [
 [[package]]
 name = "zephyra-render-ext"
 version = "0.1.0"
-source = "git+https://github.com/Aura-Zephyrus/ZephyraCore.git?branch=main#dfa9ddcc2d0eb1450bf2719f90f6818ec45dbe76"
+source = "git+https://github.com/Aura-Zephyrus/ZephyraCore.git?branch=main#fff064bb4e4bb4bffed7db8ec9000c943f790ec8"
 dependencies = [
  "bytes",
 ]
