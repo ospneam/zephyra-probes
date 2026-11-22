@@ -76,6 +76,12 @@ fn main() {
     // 绝对下限：基线很小时（如刚启动的 pagefile 只有几 MB），百分比会被
     // 几百 KB 的抖动放大成 30%+ 造成误报。低于此基线不按百分比判定。
     let memory_floor_kb = arg_u64("--assert-memory-floor-kb", 64 * 1024);
+    // 绝对增长上限（相对历史最低水位）：百分比判据对小基线无效（WASAPI 泄漏
+    // 从 3MB 涨到 92MB 但基线太小一直没触发百分比）。改为盯"相对低水位的绝对
+    // 增长"——真实泄漏单调涨几十 MB，而预热期堆高水位/碎片化会平台期（+2MB 内）。
+    let max_growth_kb = arg_u64("--assert-memory-growth-kb", 64 * 1024);
+    // 判定前的观察窗口（秒）：给预热/碎片化足够时间稳定下来。
+    let growth_grace_secs = arg_f64("--assert-growth-grace-secs", 600.0);
     let stall_secs = arg_f64("--stall-timeout-secs", 5.0).max(0.5);
     let session_idle_secs = arg_f64("--session-idle-secs", 1.5).max(0.2);
     let enabled = !std::env::args().any(|a| a == "--no-assert");
@@ -95,6 +101,8 @@ fn main() {
     let mut last_log = started;
     let mut baseline_ws = 0u64;
     let mut baseline_pf = 0u64;
+    let mut pf_low_water = u64::MAX;
+    let mut baseline_at_secs = 0.0f64;
     let mut sessions = 0u64;
     let mut total_video_frames = 0u64;
     let mut total_audio_frames = 0u64;
@@ -219,10 +227,20 @@ fn main() {
                 if baseline_ws == 0 {
                     baseline_ws = ws;
                     baseline_pf = pf;
+                    baseline_at_secs = elapsed;
                 } else if ws > 0 && pf > 0 {
                     let wsg = (ws as f64 / baseline_ws as f64 - 1.0) * 100.0;
                     let pfg = (pf as f64 / baseline_pf as f64 - 1.0) * 100.0;
-                    // 基线低于绝对下限时只记录不判定：小基数的百分比没有意义。
+                    // 相对低水位的绝对增长：与基线大小无关，抓小基数持续泄漏。
+                    pf_low_water = pf_low_water.min(pf);
+                    let pf_growth = pf.saturating_sub(pf_low_water);
+                    if elapsed - baseline_at_secs >= growth_grace_secs {
+                        assert!(
+                            pf_growth <= max_growth_kb,
+                            "[video-soak] 断言失败：pagefile 相对低水位增长 {pf_growth}KB > 上限 {max_growth_kb}KB（低水位 {pf_low_water}→当前 {pf}KB）"
+                        );
+                    }
+                    // 基线低于绝对下限时只记录百分比，不判定：小基数的百分比没有意义。
                     if baseline_ws >= memory_floor_kb {
                         assert!(
                             wsg <= memory_pct,

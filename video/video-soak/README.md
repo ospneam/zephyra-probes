@@ -28,6 +28,8 @@ cargo run -- --path E:\videos\test.mp4 --duration-secs 86400
 | `--assert-warmup-secs N` | 5 | 内存基线预热时间 |
 | `--assert-memory-pct N` | 10 | 工作集 / pagefile 相对基线增长上限 % |
 | `--assert-memory-floor-kb N` | 65536 | 基线低于此值（KB）时跳过百分比判定——小基数的抖动没有意义 |
+| `--assert-memory-growth-kb N` | 65536 | pagefile 相对历史低水位的绝对增长上限——抓小基数持续泄漏（百分比抓不到） |
+| `--assert-growth-grace-secs N` | 600 | 增长断言的观察窗口（秒），给预热/碎片化稳定时间 |
 | `--no-audio` | — | 关闭音频解码与输出（诊断用：对比音频路径的内存增长） |
 | `--no-assert` | — | 关闭全部断言，只打日志 |
 
